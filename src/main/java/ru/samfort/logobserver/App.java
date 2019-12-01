@@ -17,7 +17,7 @@ public class App extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
-        scene = new Scene(loadFXML("observer"));
+        scene = new Scene(loadFXML("observerV2"));
         stage.setScene(scene);
         stage.setTitle("Log Observer");
         stage.show();

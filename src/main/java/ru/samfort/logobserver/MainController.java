@@ -1,27 +1,25 @@
 package ru.samfort.logobserver;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.List;
-
 import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
-import javafx.geometry.Orientation;
-import javafx.geometry.Pos;
 import javafx.scene.Node;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.layout.AnchorPane;
-import javafx.scene.layout.Border;
-import javafx.scene.layout.StackPane;
+import javafx.scene.input.MouseEvent;
+import javafx.scene.text.Text;
 import javafx.stage.DirectoryChooser;
-import javafx.stage.Stage;
 import javafx.stage.Window;
+import org.fxmisc.richtext.StyleClassedTextArea;
+import ru.samfort.logobserver.utils.FileReader;
+import ru.samfort.logobserver.utils.SimpleFileTreeItem;
+
+import java.io.File;
+import java.io.IOException;
 
 public class MainController {
 
-    private int tabCounter = 2;
+    private volatile int tabCounter = 0;
     @FXML
     private TextField textToSearch;
     @FXML
@@ -33,61 +31,55 @@ public class MainController {
     @FXML
     private TabPane tabPane;
     @FXML
-    private Tab tabN1;
+    private StyleClassedTextArea textArea;
     @FXML
-    private Tab addTab;
+    private TreeView <File> treeView;
+    private TreeItem <File> treeItem;
 
-    @FXML
-    private void switchToSecondary() throws IOException {
-        App.setRoot("secondary");
+    EventHandler<MouseEvent> mouseEventHandle = (MouseEvent event) -> handleMouseClicked(event);
+
+    private void handleMouseClicked(MouseEvent event) {
+        Node node = event.getPickResult().getIntersectedNode();
+        // Accept double clicks only on node cells, and not on empty spaces of the TreeView
+        if (event.getClickCount()==2 && (node instanceof Text || (node instanceof TreeCell && ((TreeCell) node).getText() != null))) {
+            File file = (File) ((TreeItem)treeView.getSelectionModel().getSelectedItem()).getValue();
+            String filePath = file.toString();
+            if (filePath.endsWith(ext.getText())){
+                textArea = new StyleClassedTextArea();
+                FileReader reader = new FileReader(file, textArea);
+                reader.read();
+                addNewTab();
+                tabPane.getTabs().get(tabCounter-1).setContent(textArea);
+                tabPane.getTabs().get(tabCounter-1).setText(file.getName());
+            }
+            System.out.println("Node double click at: " + file.getAbsolutePath());
+        }
     }
 
+
     @FXML
-    private void directoryChooser (ActionEvent event){
+    private void directoryChooser (ActionEvent event) {
         final DirectoryChooser directoryChooser = new DirectoryChooser();
         Window dcWindow = directoryChooserButton.getScene().getWindow();
         File directory = directoryChooser.showDialog(dcWindow);
-        String directoryPath = directory.getAbsolutePath();
+        treeItem = new SimpleFileTreeItem(directory, ext.getText());
+        treeView.setRoot(treeItem);
+        treeView.addEventHandler(MouseEvent.MOUSE_CLICKED, mouseEventHandle);
     }
+
     @FXML
-    private void addNewTab () throws IOException {
-        if (addTab.isSelected()){
+    private void addNewTab () {
             Tab newTab = new Tab("Tab #" + (tabCounter));
-            Node previousTabContent = tabPane.getTabs().get(tabPane.getTabs().size()-2).getContent();
-            /*newTab.setContent(previousTabContent);
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("ru/samfort/logobserver/observer.fxml"));
-            newTab.setContent(loader.load());*/
-
-
-            AnchorPane newAnchorPane = new AnchorPane();
-                newAnchorPane.setPrefSize(900,560);
-                newTab.setContent(newAnchorPane);
-            SplitPane newSplitPane = new SplitPane();
-                newSplitPane.setPrefSize(900,540);
-                newSplitPane.setDividerPositions(0.3);
-            AnchorPane innerAP = new AnchorPane();
-                innerAP.setPrefSize(400,540);
-            TreeView tw = new TreeView();
-                tw.setPrefSize(400,540);
-                tw.setMaxWidth(600);
-                tw.setLayoutY(7);
-            ScrollBar sb = new ScrollBar();
-                sb.setOrientation(Orientation.VERTICAL);
-
-            StackPane stackPane = new StackPane();
-            stackPane.setPrefSize(900,560);
-            stackPane.setAlignment(Pos.TOP_LEFT);
-            stackPane.getChildren().addAll(newAnchorPane, newSplitPane, innerAP, tw, sb);
-            newTab.setContent(stackPane);
-
-
-            tabCounter++;
-            // add newtab
-            tabPane.getTabs().add(tabPane.getTabs().size() - 1, newTab);
-            //set selection
-            tabPane.getSelectionModel().select(tabPane.getTabs().size() - 2);
-            // set event handler to the tab
-            //newTab.setOnSelectionChanged(addTab.getOnSelectionChanged());
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("tabV2.fxml"));
+        try {
+            newTab.setContent(loader.load());
+        } catch (IOException e) {
+            e.printStackTrace();
         }
+        tabCounter++;
+            // add newtab
+            tabPane.getTabs().add(tabPane.getTabs().size(), newTab);
+            //set selection
+            tabPane.getSelectionModel().select(tabPane.getTabs().size() - 1);
     }
 }
