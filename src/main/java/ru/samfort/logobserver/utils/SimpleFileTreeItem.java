@@ -1,11 +1,13 @@
 package ru.samfort.logobserver.utils;
-import java.io.File;
-import java.util.Arrays;
-import java.util.List;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.control.TreeItem;
+
+import java.io.File;
+import java.nio.file.Path;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * @author Alexander Bolte - Bolte Consulting (2010 - 2014).
@@ -30,8 +32,9 @@ public class SimpleFileTreeItem extends TreeItem<File> {
     private boolean isFirstTimeChildren = true;
     private boolean isFirstTimeLeaf = true;
     private boolean isLeaf;
-    //contain file type to search
+    //file type to search
     private String filterType;
+    private String textToSearch;
 
     /**
      * Calling the constructor of super class in oder to create a new
@@ -44,6 +47,11 @@ public class SimpleFileTreeItem extends TreeItem<File> {
     public SimpleFileTreeItem(File f, String filterType) {
         super(f);
         this.filterType=filterType;
+    }
+    public SimpleFileTreeItem(File f, String filterType, String textToSearch) {
+        super(f);
+        this.filterType=filterType;
+        this.textToSearch=textToSearch;
     }
 
     /*
@@ -73,7 +81,7 @@ public class SimpleFileTreeItem extends TreeItem<File> {
     public boolean isLeaf() {
         if (isFirstTimeLeaf) {
             isFirstTimeLeaf = false;
-            File f = (File) getValue();
+            File f = getValue();
             isLeaf = f.isFile();
         }
         return isLeaf;
@@ -92,15 +100,19 @@ public class SimpleFileTreeItem extends TreeItem<File> {
      */
     private ObservableList<TreeItem<File>> buildChildren(TreeItem<File> TreeItem) {
         File f = TreeItem.getValue();
-            if (f != null && f.isDirectory()) {
+            if (f != null && f.isDirectory() && f.listFiles() != null) {
                 File[] files = f.listFiles();
                 if (files != null) {
-                    ObservableList<TreeItem<File>> children = FXCollections
-                            .observableArrayList();
+                    ObservableList<TreeItem<File>> children = FXCollections.observableArrayList();
+                    //childrenPopulator(f, children);
+//                System.out.println("We are here. "+f.toPath().toString());
+//                    childrenPopulator(f, children);
+//                    children.forEach(System.out::println);
                     for (File childFile : files) {
-                        //filtering
-                        if (childFile.getName().endsWith(filterType) || (childFile.isDirectory() && hasFiltered(childFile.listFiles(), filterType))) {
-                            children.add(new SimpleFileTreeItem(childFile, filterType));
+                        //filtering by file type and text to search
+                        if (childFile.isFile() && childFile.getName().endsWith(filterType) && (TextFileManager.isFileContainText(textToSearch, childFile.toPath()))
+                                || (childFile.isDirectory() /*&& hasFiltered(childFile.listFiles())*/)) {
+                            children.add(new SimpleFileTreeItem(childFile, filterType, textToSearch));
                         }
                     }
                     return children;
@@ -109,9 +121,88 @@ public class SimpleFileTreeItem extends TreeItem<File> {
         return FXCollections.emptyObservableList();
     }
 
+    private void childrenPopulator (File root, ObservableList<TreeItem<File>> childrenList){
+        File [] filesArr = root.listFiles();
+        for (File f: filesArr){
+            if (f.isDirectory()){
+
+            }
+        }
+
+        List<Path> result = new ArrayList<>();
+        Queue<File> fileTree = new PriorityQueue<>();
+        Collections.addAll(fileTree, root.listFiles());
+        while (!fileTree.isEmpty())
+        {
+            File currentFile = fileTree.remove();
+            if(currentFile.isDirectory()){
+                Collections.addAll(fileTree, currentFile.listFiles());
+            } else if (currentFile.getName().endsWith(filterType) && TextFileManager.isFileContainText(textToSearch, currentFile.toPath())) {
+                Path currentPath = currentFile.toPath();
+                result.add(currentPath);
+                if (!result.contains(currentPath.getParent())){
+                    result.add(currentPath.getParent());
+                }
+            }
+        }
+        childrenList.addAll(result.stream().map(f->new SimpleFileTreeItem(f.toFile(), filterType, textToSearch)).collect(Collectors.toSet()));
+    }
+
+//    private void childrenPopulator (File root, ObservableList<TreeItem<File>> childrenList){
+//        List<Path> result = new ArrayList<>();
+//        Queue<File> fileTree = new PriorityQueue<>();
+//        Collections.addAll(fileTree, root.listFiles());
+//        while (!fileTree.isEmpty())
+//        {
+//            File currentFile = fileTree.remove();
+//            if(currentFile.isDirectory()){
+//                Collections.addAll(fileTree, currentFile.listFiles());
+//            } else if (currentFile.getName().endsWith(filterType) && TextFileManager.isFileContainText(textToSearch, currentFile.toPath())) {
+//                Path currentPath = currentFile.toPath();
+//                result.add(currentPath);
+//                if (!result.contains(currentPath.getParent())){
+//                    result.add(currentPath.getParent());
+//                }
+//            }
+//        }
+//        childrenList.addAll(result.stream().map(f->new SimpleFileTreeItem(f.toFile(), filterType, textToSearch)).collect(Collectors.toSet()));
+//    }
+
+
+
+    /*private void childrenPopulator (File root, ObservableList<TreeItem<File>> childrenList){
+        System.out.println("populator");
+        try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(root.toPath(), filterType)) {
+            for (Path children : directoryStream) {
+                System.out.print("Path: "+children.toString());
+                if (Files.isRegularFile(children)&&TextFileManager.isFileContainText(textToSearch, children)){
+                    System.out.println(" is file");
+                    childrenList.add(new SimpleFileTreeItem(children.toFile(), filterType, textToSearch));
+                }
+                else if (Files.isDirectory(children)){
+                    childrenList.add(new SimpleFileTreeItem(children.toFile(), filterType, textToSearch));
+                    System.out.println(" is directory");
+                    //childrenPopulator(children.toFile(), childrenList);
+                }
+
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }*/
+
     //checking for filtered files in the array
-    private boolean hasFiltered (File [] arr, String filterType){
-        List <File> list = Arrays.asList(arr);
-        return list.stream().anyMatch(f -> f.getName().endsWith(filterType));
+    private boolean hasFiltered (File [] arr){
+        List<File> list;
+        if (arr!= null && arr.length>0) {
+            for (File f: arr){
+                hasFiltered(f.listFiles());
+
+            }
+            list = Arrays.asList(arr);
+            return list.stream().anyMatch(f -> f.getName().endsWith(filterType));
+        }
+        else
+            return false;
     }
 }
