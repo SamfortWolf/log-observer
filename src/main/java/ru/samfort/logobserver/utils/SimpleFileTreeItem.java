@@ -110,7 +110,7 @@ public class SimpleFileTreeItem extends TreeItem<File> {
 //                    children.forEach(System.out::println);
                     for (File childFile : files) {
                         //filtering by file type and text to search
-                        if (childFile.isFile() && childFile.getName().endsWith(filterType) && (TextFileManager.isFileContainText(textToSearch, childFile.toPath()))
+                        if (childFile.isFile() && childFile.getName().endsWith(filterType) /*&& (TextFileManager.isFileContainText(textToSearch, childFile.toPath()))*/
                                 || (childFile.isDirectory() /*&& hasFiltered(childFile.listFiles())*/)) {
                             children.add(new SimpleFileTreeItem(childFile, filterType, textToSearch));
                         }
@@ -137,7 +137,7 @@ public class SimpleFileTreeItem extends TreeItem<File> {
             File currentFile = fileTree.remove();
             if(currentFile.isDirectory()){
                 Collections.addAll(fileTree, currentFile.listFiles());
-            } else if (currentFile.getName().endsWith(filterType) && TextFileManager.isFileContainText(textToSearch, currentFile.toPath())) {
+            } else if (currentFile.getName().endsWith(filterType) /*&& TextFileManager.isFileContainText(textToSearch, currentFile.toPath())*/) {
                 Path currentPath = currentFile.toPath();
                 result.add(currentPath);
                 if (!result.contains(currentPath.getParent())){

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.control.ToolBar?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import org.fxmisc.flowless.VirtualizedScrollPane?>
+<?import org.fxmisc.richtext.StyleClassedTextArea?>
+
+<AnchorPane fx:id="tabAnchorPane" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" minHeight="-Infinity" minWidth="-Infinity" prefHeight="560.0" prefWidth="500.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ru.samfort.logobserver.MainController">
+    <VirtualizedScrollPane fx:id="scrollPane" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="30.0">
+        <content>
+            <StyleClassedTextArea fx:id="textArea" editable="false" stylesheets="@highlight.css" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0" />
+        </content>
+    </VirtualizedScrollPane>
+   <ToolBar prefHeight="30.0" prefWidth="200.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+     <items>
+         <Label text="Matches: " />
+         <Label text="0" />
+       <Button mnemonicParsing="false" prefWidth="80.0" text="Previous" />
+         <Button mnemonicParsing="false" prefWidth="80.0" text="Next" />
+         <ToggleButton mnemonicParsing="false" prefWidth="80.0" text="Highlight" />
+     </items>
+   </ToolBar>
+</AnchorPane>

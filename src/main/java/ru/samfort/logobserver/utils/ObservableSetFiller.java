@@ -11,13 +11,16 @@ import java.nio.file.Path;
 
 public class ObservableSetFiller {
     private ObservableSet<String> observableSet = FXCollections.observableSet();
+    private TextFileManager textFileManager = new TextFileManager();
 
     public void fillObservableSet(File root, String filter, String textToSearch) {
+        //first - check accessibility of path
         if (Files.isReadable(root.toPath())) {
+            //then recursive search and fill observableSet
             try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(root.toPath())) {
                 for (Path children : directoryStream) {
                     if (Files.isRegularFile(children) && children.getFileName().toString().endsWith(filter) &&
-                            TextFileManager.isFileContainText(textToSearch, children)) {
+                            textFileManager.isFileContainText(textToSearch, children, true)) {
                         observableSet.add(children.toString());
                     } else if (Files.isDirectory(children)) {
                         this.fillObservableSet(children.toFile(), filter, textToSearch);
