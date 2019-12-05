@@ -64,7 +64,7 @@ public class TextFileManager {
                         if (wordMatch(buffer, i, toMap, toSearch)) {
                             matches++;
                             System.out.println("File "+pathToCheck.toString()+" contains \""+grepFor+"\"");
-                            break;
+                            return true;
                         } else {
                             inWord = true;
                         }
