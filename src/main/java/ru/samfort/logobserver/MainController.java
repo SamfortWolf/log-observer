@@ -41,6 +41,10 @@ public class MainController {
     private VirtualizedScrollPane<StyleClassedTextArea> scrollPane;
     @FXML
     private ListView<String> listView;
+    @FXML
+    private Button previousButton;
+    @FXML
+    private Button nextButton;
 
     EventHandler<MouseEvent> mouseEventHandle = (MouseEvent event) -> handleMouseClicked(event);
 
@@ -57,11 +61,11 @@ public class MainController {
             //read text from file to textArea
             TextFileManager.read(new File(str), textArea);
             List<String> styleClasses = Arrays.asList("yellow");
-            scrollPane = new VirtualizedScrollPane(textArea);
             for (Map.Entry<Integer, Integer> pair : textFileManager.getWordsPositions().entrySet()) {
                 //add yellow background to words
                 textArea.setStyle(pair.getKey(), pair.getValue(), styleClasses);
             }
+            scrollPane = new VirtualizedScrollPane(textArea);
             addNewTab();
             tabPane.getTabs().get(tabCounter - 1).setContent(scrollPane);
             textArea.setEditable(false);
@@ -81,13 +85,12 @@ public class MainController {
             listView.addEventHandler(MouseEvent.MOUSE_CLICKED, mouseEventHandle);
             listView.getFocusModel().focus(1);
         }).start();
-
     }
 
     @FXML
     private void addNewTab() {
         Tab newTab = new Tab("Tab #" + (tabCounter));
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("tabV2.fxml"));
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("tabV3.fxml"));
         try {
             newTab.setContent(loader.load());
         } catch (IOException e) {
@@ -99,4 +102,5 @@ public class MainController {
         //set selection
         tabPane.getSelectionModel().select(tabPane.getTabs().size() - 1);
     }
+
 }
