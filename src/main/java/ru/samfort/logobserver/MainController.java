@@ -3,7 +3,6 @@ package ru.samfort.logobserver;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
@@ -12,17 +11,19 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.Window;
 import org.fxmisc.flowless.VirtualizedScrollPane;
 import org.fxmisc.richtext.StyleClassedTextArea;
+import ru.samfort.logobserver.utils.MatchWord;
 import ru.samfort.logobserver.utils.ObservableSetFiller;
 import ru.samfort.logobserver.utils.TextFileManager;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
 public class MainController {
+
+    private static List<String> styleClasses = Arrays.asList("yellow");
 
     private volatile int tabCounter = 0;
     @FXML
@@ -35,9 +36,9 @@ public class MainController {
     private Button directoryChooserButton;
     @FXML
     private TabPane tabPane;
-    @FXML
+
     private StyleClassedTextArea textArea;
-    @FXML
+
     private VirtualizedScrollPane<StyleClassedTextArea> scrollPane;
     @FXML
     private ListView<String> listView;
@@ -45,13 +46,16 @@ public class MainController {
     private Button previousButton;
     @FXML
     private Button nextButton;
+    @FXML
+    private Label matchesLabel;
 
-    EventHandler<MouseEvent> mouseEventHandle = (MouseEvent event) -> handleMouseClicked(event);
+    private EventHandler<MouseEvent> mouseEventHandle = (MouseEvent event) -> handleMouseClicked(event);
 
     private void handleMouseClicked(MouseEvent event) {
         Node node = event.getPickResult().getIntersectedNode();
         // Accept double clicks only on node cells, and not on empty spaces of the TreeView
         if (event.getClickCount() == 2 && (node instanceof Text || (node instanceof TreeCell && ((TreeCell) node).getText() != null))) {
+            matchesLabel.setText("");
             String str = listView.getSelectionModel().getSelectedItem();
             System.out.println("Node double click at: " + str);
             TextFileManager textFileManager = new TextFileManager();
@@ -60,13 +64,13 @@ public class MainController {
             textArea = new StyleClassedTextArea();
             //read text from file to textArea
             TextFileManager.read(new File(str), textArea);
-            List<String> styleClasses = Arrays.asList("yellow");
-            for (Map.Entry<Integer, Integer> pair : textFileManager.getWordsPositions().entrySet()) {
+            for (Map.Entry<Integer, MatchWord> pair : textFileManager.getWordsPositions().entrySet()) {
                 //add yellow background to words
-                textArea.setStyle(pair.getKey(), pair.getValue(), styleClasses);
+                textArea.setStyle(pair.getValue().getFrom(), pair.getValue().getTo(), styleClasses);
+//              System.out.println(pair.getKey()+" - from "+pair.getValue().getFrom()+" to "+pair.getValue().getTo());
             }
             scrollPane = new VirtualizedScrollPane(textArea);
-            addNewTab();
+            addNewTab(textArea, textFileManager.getWordsPositions());
             tabPane.getTabs().get(tabCounter - 1).setContent(scrollPane);
             textArea.setEditable(false);
             tabPane.getTabs().get(tabCounter - 1).setText(Paths.get(str).getFileName().toString());
@@ -88,14 +92,8 @@ public class MainController {
     }
 
     @FXML
-    private void addNewTab() {
-        Tab newTab = new Tab("Tab #" + (tabCounter));
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("tabV3.fxml"));
-        try {
-            newTab.setContent(loader.load());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    private void addNewTab(StyleClassedTextArea textArea, Map<Integer, MatchWord> wordPositions) {
+        MyTab newTab = new MyTab(textArea, wordPositions);
         tabCounter++;
         // add newtab
         tabPane.getTabs().add(tabPane.getTabs().size(), newTab);
@@ -103,4 +101,54 @@ public class MainController {
         tabPane.getSelectionModel().select(tabPane.getTabs().size() - 1);
     }
 
+    @FXML
+    private void nextButtonOnClick() {
+        MyTab currentTab = (MyTab) tabPane.getSelectionModel().getSelectedItem();
+        Map<Integer, MatchWord> matchWords = currentTab.getWordsPositions();
+        Integer allMatches = currentTab.getWordsPositions().size();
+        Integer currentMatch = currentTab.getMatchCounter() + 1;
+        if (currentMatch > matchWords.size()) {
+            currentMatch = 1;
+        }
+        //change label text to show chosen match
+        matchesLabel.setText(currentMatch + "/" + allMatches);
+
+        currentTab.getTextArea().displaceCaret(matchWords.get(currentMatch).getFrom());//set a caret to match word pos
+        int lineNumber = currentTab.getTextArea().getCurrentParagraph();//get number of line with match word
+        currentTab.getTextArea().selectRange(matchWords.get(currentMatch).getFrom(), matchWords.get(currentMatch).getTo());//set a selection
+        int linesCount = currentTab.getTextArea().getParagraphs().size();
+        double scrollPaneHeight = scrollPane.getTotalHeightEstimate();//full height of scrollPane (pixels)
+        double oneLineHeight = scrollPaneHeight / linesCount;//height of one line
+        if (oneLineHeight * linesCount > 150) {
+            scrollPane.scrollYToPixel(oneLineHeight * lineNumber - 100);//scroll to line with match word
+        } else {
+            scrollPane.scrollYToPixel(oneLineHeight * lineNumber);//scroll to line with match word
+        }
+        currentTab.setMatchCounter(currentMatch);
+    }
+
+    @FXML
+    private void previousButtonOnClick() {
+        MyTab currentTab = (MyTab) tabPane.getSelectionModel().getSelectedItem();
+        Map<Integer, MatchWord> matchWords = currentTab.getWordsPositions();
+        Integer allMatches = currentTab.getWordsPositions().size();
+        Integer currentMatch = currentTab.getMatchCounter() - 1;
+        if (currentMatch < 1) {
+            currentMatch = matchWords.size();
+        }
+        matchesLabel.setText(currentMatch + "/" + allMatches);
+
+        currentTab.getTextArea().displaceCaret(matchWords.get(currentMatch).getFrom());//set a caret to match word pos
+        int lineNumber = currentTab.getTextArea().getCurrentParagraph();//get number of line with match word
+        currentTab.getTextArea().selectRange(matchWords.get(currentMatch).getFrom(), matchWords.get(currentMatch).getTo());//set a selection
+        int linesCount = currentTab.getTextArea().getParagraphs().size();
+        double scrollPaneHeight = scrollPane.getTotalHeightEstimate();//full height of scrollPane (pixels)
+        double oneLineHeight = scrollPaneHeight / linesCount;//height of one line
+        if (oneLineHeight * linesCount > 150) {
+            scrollPane.scrollYToPixel(oneLineHeight * lineNumber - 100);//scroll to line with match word
+        } else {
+            scrollPane.scrollYToPixel(oneLineHeight * lineNumber);//scroll to line with match word
+        }
+        currentTab.setMatchCounter(currentMatch);
+    }
 }

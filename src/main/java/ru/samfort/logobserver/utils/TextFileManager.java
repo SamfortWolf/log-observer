@@ -11,13 +11,13 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.TreeMap;
+import java.util.HashMap;
 
 //Util class for working with text files
 public class TextFileManager {
     private static final int MAPSIZE = 4 * 1024; // 4K - make this * 1024 to 4MB in a real system.
     //key is start position and value is end position
-    private TreeMap<Integer, Integer> wordsPositions = new TreeMap<>();
+    private HashMap<Integer, MatchWord> wordsPositions = new HashMap<>();
 
     //reading text string by string from file to StyleClassedTextArea
     public static void read(File fileFrom, StyleClassedTextArea textAreaTo) {
@@ -70,7 +70,7 @@ public class TextFileManager {
                             System.out.println("File " + pathToCheck.toString() + " contains \"" + grepFor + "\"");
                             matches++;
                             if (!firstOnly) {
-                                wordsPositions.put(i - lineCount, i + grepFor.length() - lineCount);
+                                wordsPositions.put(matches, new MatchWord(i - lineCount, i + grepFor.length() - lineCount));
                                 i += toSearch.length - 1;
                                 if (report.length() > 0) {
                                     report.append(", ");
@@ -102,7 +102,7 @@ public class TextFileManager {
         return nxt == ' ' || nxt == '\n' || nxt == '\r';
     }
 
-    public TreeMap<Integer, Integer> getWordsPositions() {
+    public HashMap<Integer, MatchWord> getWordsPositions() {
         return wordsPositions;
     }
 }
