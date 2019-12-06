@@ -13,7 +13,7 @@ public class ObservableSetFiller {
     private ObservableSet<String> observableSet = FXCollections.observableSet();
     private TextFileManager textFileManager = new TextFileManager();
 
-    public void fillObservableSet(File root, String filter, String textToSearch) {
+    public void fillObservableSet(File root, String filter, String textToSearch, boolean withSubs) {
         //first - check accessibility of path
         if (Files.isReadable(root.toPath())) {
             //then recursive search and fill observableSet
@@ -22,8 +22,8 @@ public class ObservableSetFiller {
                     if (Files.isRegularFile(children) && children.getFileName().toString().endsWith(filter) &&
                             textFileManager.isFileContainText(textToSearch, children, true)) {
                         observableSet.add(children.toString());
-                    } else if (Files.isDirectory(children)) {
-                        this.fillObservableSet(children.toFile(), filter, textToSearch);
+                    } else if (Files.isDirectory(children) && withSubs) {
+                        this.fillObservableSet(children.toFile(), filter, textToSearch, withSubs);
                     }
                 }
             } catch (IOException e) {

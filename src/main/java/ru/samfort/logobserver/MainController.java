@@ -1,6 +1,7 @@
 package ru.samfort.logobserver;
 
 import javafx.event.ActionEvent;
+import javafx.event.Event;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
@@ -17,13 +18,13 @@ import ru.samfort.logobserver.utils.TextFileManager;
 
 import java.io.File;
 import java.nio.file.Paths;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 public class MainController {
 
-    private static List<String> styleClasses = Arrays.asList("yellow");
+    private static List<String> styleClasses = Collections.singletonList("yellow");
 
     private volatile int tabCounter = 0;
     @FXML
@@ -50,6 +51,11 @@ public class MainController {
     private Label matchesLabel;
 
     private EventHandler<MouseEvent> mouseEventHandle = (MouseEvent event) -> handleMouseClicked(event);
+
+    private EventHandler tabSelectionHandler = (Event event) ->
+            matchesLabel.setText(((MyTab) tabPane.getSelectionModel().getSelectedItem()).getMatchCounter() + "/" +
+                    ((MyTab) tabPane.getSelectionModel().getSelectedItem()).getWordsPositions().size());
+
 
     private void handleMouseClicked(MouseEvent event) {
         Node node = event.getPickResult().getIntersectedNode();
@@ -82,9 +88,12 @@ public class MainController {
         final DirectoryChooser directoryChooser = new DirectoryChooser();
         Window dcWindow = directoryChooserButton.getScene().getWindow();
         File directory = directoryChooser.showDialog(dcWindow);
+        if (listView.getItems().size()>0){
+            listView.getItems().clear();
+        }
         ObservableSetFiller filler = new ObservableSetFiller();
         new Thread(() -> {
-            filler.fillObservableSet(directory, ext.getText(), textToSearch.getText());
+            filler.fillObservableSet(directory, ext.getText(), textToSearch.getText(), checkBoxSubs.isSelected());
             listView.getItems().addAll(filler.getObservableSet());
             listView.addEventHandler(MouseEvent.MOUSE_CLICKED, mouseEventHandle);
             listView.getFocusModel().focus(1);
@@ -94,6 +103,7 @@ public class MainController {
     @FXML
     private void addNewTab(StyleClassedTextArea textArea, Map<Integer, MatchWord> wordPositions) {
         MyTab newTab = new MyTab(textArea, wordPositions);
+        newTab.setOnSelectionChanged(tabSelectionHandler);
         tabCounter++;
         // add newtab
         tabPane.getTabs().add(tabPane.getTabs().size(), newTab);
