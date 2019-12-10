@@ -1,6 +1,5 @@
 package ru.samfort.logobserver;
 
-import javafx.event.ActionEvent;
 import javafx.event.Event;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
@@ -17,6 +16,7 @@ import ru.samfort.logobserver.utils.ObservableSetFiller;
 import ru.samfort.logobserver.utils.TextFileManager;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
@@ -84,7 +84,7 @@ public class MainController {
     }
 
     @FXML
-    private void directoryChooser(ActionEvent event) {
+    private void directoryChooser() {
         final DirectoryChooser directoryChooser = new DirectoryChooser();
         Window dcWindow = directoryChooserButton.getScene().getWindow();
         File directory = directoryChooser.showDialog(dcWindow);

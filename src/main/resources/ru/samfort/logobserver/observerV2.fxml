@@ -20,7 +20,7 @@
                   <Font name="System Italic" size="12.0" />
                </font>
             </TextField>
-            <TextField fx:id="ext" prefHeight="25.0" prefWidth="48.0" text=".txt" />
+            <TextField fx:id="ext" prefHeight="25.0" prefWidth="48.0" text=".log" />
             <CheckBox fx:id="checkBoxSubs" mnemonicParsing="false" text="with subdirectories" />
           <Button fx:id="directoryChooserButton" mnemonicParsing="false" onAction="#directoryChooser" text="Start a new search" />
             <Label prefWidth="60.0" text=" Matches: " textAlignment="CENTER" />
