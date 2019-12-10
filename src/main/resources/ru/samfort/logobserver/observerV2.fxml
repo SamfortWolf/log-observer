@@ -24,9 +24,9 @@
             <CheckBox fx:id="checkBoxSubs" mnemonicParsing="false" text="with subdirectories" />
           <Button fx:id="directoryChooserButton" mnemonicParsing="false" onAction="#directoryChooser" text="Start a new search" />
             <Label prefWidth="60.0" text=" Matches: " textAlignment="CENTER" />
-            <Label fx:id="matchesLabel" prefWidth="30.0" />
-            <Button fx:id="previousButton" mnemonicParsing="false" prefWidth="80.0" text="Previous" onAction="#previousButtonOnClick"/>
-            <Button fx:id="nextButton" mnemonicParsing="false" prefWidth="80.0" text="Next" onAction="#nextButtonOnClick"/>
+            <Label fx:id="matchesLabel" />
+            <Button fx:id="previousButton" mnemonicParsing="false" onAction="#previousButtonOnClick" prefWidth="80.0" text="Previous" />
+            <Button fx:id="nextButton" mnemonicParsing="false" onAction="#nextButtonOnClick" prefWidth="80.0" text="Next" />
         </items>
       </ToolBar>
       <SplitPane dividerPositions="0.3" layoutX="112.0" layoutY="39.0" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" minHeight="300" minWidth="400" prefHeight="560.0" prefWidth="900.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="40.0">

@@ -16,17 +16,17 @@ import ru.samfort.logobserver.utils.ObservableSetFiller;
 import ru.samfort.logobserver.utils.TextFileManager;
 
 import java.io.File;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class MainController {
 
     private static List<String> styleClasses = Collections.singletonList("yellow");
 
-    private volatile int tabCounter = 0;
+    private int tabCounter = 0;
     @FXML
     private TextField textToSearch;
     @FXML
@@ -40,7 +40,7 @@ public class MainController {
 
     private StyleClassedTextArea textArea;
 
-    private VirtualizedScrollPane<StyleClassedTextArea> scrollPane;
+    private VirtualizedScrollPane scrollPane;
     @FXML
     private ListView<String> listView;
     @FXML
@@ -50,7 +50,7 @@ public class MainController {
     @FXML
     private Label matchesLabel;
 
-    private EventHandler<MouseEvent> mouseEventHandle = (MouseEvent event) -> handleMouseClicked(event);
+    private EventHandler<MouseEvent> mouseEventHandle = this::handleMouseClicked;
 
     private EventHandler tabSelectionHandler = (Event event) ->
             matchesLabel.setText(((MyTab) tabPane.getSelectionModel().getSelectedItem()).getMatchCounter() + "/" +
@@ -65,16 +65,17 @@ public class MainController {
             String str = listView.getSelectionModel().getSelectedItem();
             System.out.println("Node double click at: " + str);
             TextFileManager textFileManager = new TextFileManager();
-            textFileManager.isFileContainText(textToSearch.getText(), Paths.get(str), false);
+            textFileManager.isFileContainText(textToSearch.getText(), Paths.get(str), false);//693ms
             System.out.println("Found " + textFileManager.getWordsPositions().size() + " matches");
             textArea = new StyleClassedTextArea();
+            long time = System.currentTimeMillis();
             //read text from file to textArea
             TextFileManager.read(new File(str), textArea);
             for (Map.Entry<Integer, MatchWord> pair : textFileManager.getWordsPositions().entrySet()) {
                 //add yellow background to words
                 textArea.setStyle(pair.getValue().getFrom(), pair.getValue().getTo(), styleClasses);
-//              System.out.println(pair.getKey()+" - from "+pair.getValue().getFrom()+" to "+pair.getValue().getTo());
             }
+            System.out.println("time: " + (System.currentTimeMillis() - time) + "ms");
             scrollPane = new VirtualizedScrollPane(textArea);
             addNewTab(textArea, textFileManager.getWordsPositions());
             tabPane.getTabs().get(tabCounter - 1).setContent(scrollPane);
@@ -88,21 +89,24 @@ public class MainController {
         final DirectoryChooser directoryChooser = new DirectoryChooser();
         Window dcWindow = directoryChooserButton.getScene().getWindow();
         File directory = directoryChooser.showDialog(dcWindow);
-        if (listView.getItems().size()>0){
+        if (listView.getItems().size() > 0) {
             listView.getItems().clear();
         }
         ObservableSetFiller filler = new ObservableSetFiller();
-        new Thread(() -> {
-            filler.fillObservableSet(directory, ext.getText(), textToSearch.getText(), checkBoxSubs.isSelected());
-            listView.getItems().addAll(filler.getObservableSet());
-            listView.addEventHandler(MouseEvent.MOUSE_CLICKED, mouseEventHandle);
-            listView.getFocusModel().focus(1);
-        }).start();
+        if (directory != null) {
+            new Thread(() -> {
+                filler.fillObservableSet(directory, ext.getText(), textToSearch.getText(), checkBoxSubs.isSelected());
+                listView.getItems().addAll(filler.getObservableSet());
+                listView.addEventHandler(MouseEvent.MOUSE_CLICKED, mouseEventHandle);
+                listView.getFocusModel().focus(1);
+            }).start();
+        }
     }
 
     @FXML
     private void addNewTab(StyleClassedTextArea textArea, Map<Integer, MatchWord> wordPositions) {
         MyTab newTab = new MyTab(textArea, wordPositions);
+        newTab.setOnClosed((Event event) -> tabCounter--);
         newTab.setOnSelectionChanged(tabSelectionHandler);
         tabCounter++;
         // add newtab
@@ -115,7 +119,7 @@ public class MainController {
     private void nextButtonOnClick() {
         MyTab currentTab = (MyTab) tabPane.getSelectionModel().getSelectedItem();
         Map<Integer, MatchWord> matchWords = currentTab.getWordsPositions();
-        Integer allMatches = currentTab.getWordsPositions().size();
+        int allMatches = currentTab.getWordsPositions().size();
         Integer currentMatch = currentTab.getMatchCounter() + 1;
         if (currentMatch > matchWords.size()) {
             currentMatch = 1;
@@ -141,8 +145,8 @@ public class MainController {
     private void previousButtonOnClick() {
         MyTab currentTab = (MyTab) tabPane.getSelectionModel().getSelectedItem();
         Map<Integer, MatchWord> matchWords = currentTab.getWordsPositions();
-        Integer allMatches = currentTab.getWordsPositions().size();
-        Integer currentMatch = currentTab.getMatchCounter() - 1;
+        int allMatches = currentTab.getWordsPositions().size();
+        int currentMatch = currentTab.getMatchCounter() - 1;
         if (currentMatch < 1) {
             currentMatch = matchWords.size();
         }

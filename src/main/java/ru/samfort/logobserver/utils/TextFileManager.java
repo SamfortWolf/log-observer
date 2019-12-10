@@ -15,20 +15,22 @@ import java.util.HashMap;
 
 //Util class for working with text files
 public class TextFileManager {
-    private static final int MAPSIZE = 4 * 1024; // 4K - make this * 1024 to 4MB in a real system.
+    private static final int MAPSIZE = 4 * 1024 * 1024;
     //key is start position and value is end position
     private HashMap<Integer, MatchWord> wordsPositions = new HashMap<>();
 
     //reading text string by string from file to StyleClassedTextArea
-    public static void read(File fileFrom, StyleClassedTextArea textAreaTo) {
+    public static boolean read(File fileFrom, StyleClassedTextArea textAreaTo) {
         try (BufferedReader reader = new BufferedReader(new FileReader(fileFrom))) {
             char[] buf = new char[102400];
             while (reader.ready()) {
                 reader.read(buf);
                 textAreaTo.appendText(new String(buf));
             }
+            return true;
         } catch (IOException e) {
             e.printStackTrace();
+            return false;
         }
     }
 
@@ -36,12 +38,12 @@ public class TextFileManager {
         final byte[] toSearch = grepFor.getBytes(StandardCharsets.UTF_8);
         StringBuilder report = new StringBuilder();
         int padding = 1; // need to scan 1 character ahead in case it is a word boundary.
-        int lineCount = 0;
+        int carriageReturnCount = 0;//for windows
         int matches = 0;
         boolean inWord = false;
-        boolean scanToLineEnd = false;
         try (FileChannel channel = FileChannel.open(pathToCheck, StandardOpenOption.READ)) {
             final long length = channel.size();
+            int iterations = 0;
             int pos = 0;
             while (pos < length) {
                 long remaining = length - pos;
@@ -54,28 +56,23 @@ public class TextFileManager {
                 pos += (tryMap == toMap) ? MAPSIZE : toMap;
                 for (int i = 0; i < limit; i++) {
                     final byte b = buffer.get(i);
-                    if (scanToLineEnd) {
-                        if (b == '\n') {
-                            scanToLineEnd = false;
-                            inWord = false;
-                            lineCount++;
-                        }
-                    } else if (b == '\n') {
-                        lineCount++;
+                    if (b == '\n' || b == ' ') {
                         inWord = false;
-                    } else if (b == '\r' || b == ' ') {
+                    } else if (b == '\r') {
+                        carriageReturnCount++;
                         inWord = false;
                     } else if (!inWord) {
                         if (wordMatch(buffer, i, toMap, toSearch)) {
-                            System.out.println("File " + pathToCheck.toString() + " contains \"" + grepFor + "\"");
+                            //System.out.println("File " + pathToCheck.toString() + " contains \"" + grepFor + "\"");
                             matches++;
                             if (!firstOnly) {
-                                wordsPositions.put(matches, new MatchWord(i - lineCount, i + grepFor.length() - lineCount));
+                                wordsPositions.put(matches, new MatchWord(i - carriageReturnCount + iterations, i + grepFor.length() - carriageReturnCount + iterations));
+                                //System.out.println("Starts at "+i+", end at "+(i + grepFor.length()));
                                 i += toSearch.length - 1;
                                 if (report.length() > 0) {
                                     report.append(", ");
                                 }
-                                report.append(lineCount);
+                                report.append(carriageReturnCount);
                             } else {
                                 return true;
                             }
@@ -84,6 +81,8 @@ public class TextFileManager {
                         }
                     }
                 }
+                //System.out.println("it: "+iterations);
+                iterations += limit + 1;
             }
         } catch (IOException e) {
             e.printStackTrace();
