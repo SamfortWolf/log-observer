@@ -1,12 +1,12 @@
 package ru.samfort.logobserver;
 
+import javafx.application.Platform;
 import javafx.event.Event;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
-import javafx.scene.text.Text;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Window;
 import org.fxmisc.flowless.VirtualizedScrollPane;
@@ -24,7 +24,9 @@ import java.util.Map;
 
 public class MainController {
 
-    private static List<String> styleClasses = Collections.singletonList("yellow");
+    private static List<String> yellowBackStyle = Collections.singletonList("yellow");
+    private static Thread searchThread;
+    private static Thread textAreaThread;
 
     private int tabCounter = 0;
     @FXML
@@ -49,6 +51,15 @@ public class MainController {
     private Button nextButton;
     @FXML
     private Label matchesLabel;
+    @FXML
+    private Label status;
+    @FXML
+    private Button stopSearch;
+    @FXML
+    private Button expandAll;
+    @FXML
+    private Button collapseAll;
+
 
     private EventHandler<MouseEvent> mouseEventHandle = this::handleMouseClicked;
 
@@ -60,27 +71,31 @@ public class MainController {
     private void handleMouseClicked(MouseEvent event) {
         Node node = event.getPickResult().getIntersectedNode();
         // Accept double clicks only on node cells, and not on empty spaces of the TreeView
-        if (event.getClickCount() == 2 && (node instanceof Text || (node instanceof TreeCell && ((TreeCell) node).getText() != null))) {
+        if (event.getClickCount() == 2 ) {
             matchesLabel.setText("");
             String str = TreeViewHelper.pathBuilder(treeView.getSelectionModel().getSelectedItem());//listView.getSelectionModel().getSelectedItem();
-            System.out.println("Node double click at: " + str);
-            TextFileManager textFileManager = new TextFileManager();
-            textFileManager.isFileContainText(textToSearch.getText(), Paths.get(str), false);//693ms
-            System.out.println("Found " + textFileManager.getWordsPositions().size() + " matches");
-            textArea = new StyleClassedTextArea();
-            long time = System.currentTimeMillis();
-            //read text from file to textArea
-            TextFileManager.read(new File(str), textArea);
-            for (Map.Entry<Integer, MatchWord> pair : textFileManager.getWordsPositions().entrySet()) {
-                //add yellow background to words
-                textArea.setStyle(pair.getValue().getFrom(), pair.getValue().getTo(), styleClasses);
+            if (str.endsWith(ext.getText())) {
+                System.out.println("Open: " + str);
+                TextFileManager textFileManager = new TextFileManager();
+                textFileManager.isFileContainText(textToSearch.getText(), Paths.get(str), false);//693ms
+                System.out.println("Found " + textFileManager.getWordsPositions().size() + " matches");
+                textArea = new StyleClassedTextArea();
+
+                long time = System.currentTimeMillis();
+                //read text from file to textArea
+                TextFileManager.read(new File(str), textArea);
+                for (Map.Entry<Integer, MatchWord> pair : textFileManager.getWordsPositions().entrySet()) {
+                    //add yellow background to words
+                    textArea.setStyle(pair.getValue().getFrom(), pair.getValue().getTo(), yellowBackStyle);
+                }
+                System.out.println("time: " + (System.currentTimeMillis() - time) + "ms\n----------------------------");
+
+                scrollPane = new VirtualizedScrollPane(textArea);
+                addNewTab(textArea, textFileManager.getWordsPositions());
+                tabPane.getTabs().get(tabCounter - 1).setContent(scrollPane);
+                textArea.setEditable(false);
+                tabPane.getTabs().get(tabCounter - 1).setText(Paths.get(str).getFileName().toString());
             }
-            System.out.println("time: " + (System.currentTimeMillis() - time) + "ms");
-            scrollPane = new VirtualizedScrollPane(textArea);
-            addNewTab(textArea, textFileManager.getWordsPositions());
-            tabPane.getTabs().get(tabCounter - 1).setContent(scrollPane);
-            textArea.setEditable(false);
-            tabPane.getTabs().get(tabCounter - 1).setText(Paths.get(str).getFileName().toString());
         }
     }
 
@@ -94,16 +109,24 @@ public class MainController {
         }
         if (directory != null) {
             System.out.println("Root directory is: " + directory.toString());
+            status.setText("Processing...");
+            status.setStyle("-fx-background-color: rgb(255,176,50)");
             ObservableSetFiller filler = new ObservableSetFiller();
-            new Thread(() -> {
+            searchThread = new Thread(() -> {
                 filler.fillObservableSet(directory, ext.getText(), textToSearch.getText(), checkBoxSubs.isSelected());
                 TreeViewHelper.setRoot(Paths.get(directory.getAbsolutePath()));
                 TreeViewHelper.setObservableList(filler.getObservableSet());
                 TreeViewHelper.fill();
-                treeView.setRoot(TreeViewHelper.getRoot());
-                treeView.getRoot().setExpanded(true);
-            }).start();
-            treeView.addEventHandler(MouseEvent.MOUSE_CLICKED, mouseEventHandle);
+                Platform.runLater(()->{
+                    status.setText("Complete!");
+                    status.setStyle("-fx-background-color: rgb(81,255,98)");
+                    treeView.setRoot(TreeViewHelper.getRoot());
+                    treeView.addEventHandler(MouseEvent.MOUSE_CLICKED, mouseEventHandle);
+                });
+
+            });
+            searchThread.start();
+            directoryChooserButton.setDisable(true);
         }
     }
 
@@ -168,5 +191,36 @@ public class MainController {
             scrollPane.scrollYToPixel(oneLineHeight * lineNumber);//scroll to line with match word
         }
         currentTab.setMatchCounter(currentMatch);
+    }
+
+    @FXML
+    private void stopButtonClick () throws InterruptedException {
+        if (searchThread!=null && searchThread.isAlive()){
+            searchThread.stop();
+        }
+        status.setText("--");
+        status.setStyle(null);
+        if (tabPane.getTabs().size()>0) {
+            tabPane.getTabs().clear();
+        }
+        Thread.sleep(250);
+        if (treeView.getRoot() != null) {
+            treeView.setRoot(null);
+        }
+        matchesLabel.setText("");
+        directoryChooserButton.setDisable(false);
+    }
+
+    @FXML
+    private void expandAllClick (){
+        if (treeView.getRoot()!=null) {
+            TreeViewHelper.expandAll(treeView.getRoot());
+        }
+    }
+    @FXML
+    private void collapseAllClick (){
+        if (treeView.getRoot()!=null) {
+            TreeViewHelper.collapseAll(treeView.getRoot());
+        }
     }
 }

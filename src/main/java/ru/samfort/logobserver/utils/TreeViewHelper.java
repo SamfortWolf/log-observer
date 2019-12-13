@@ -4,6 +4,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.ObservableSet;
 import javafx.scene.control.TreeItem;
+import javafx.scene.control.TreeView;
 
 import java.nio.file.Path;
 import java.util.stream.Collectors;
@@ -58,6 +59,24 @@ public class TreeViewHelper {
             }
         }
         return result.toString();
+    }
+
+    public static void expandAll (TreeItem<?> root){
+        if(root != null && !root.isLeaf()){
+            root.setExpanded(true);
+            for(TreeItem<?> child:root.getChildren()){
+                expandAll(child);
+            }
+        }
+    }
+
+    public static void collapseAll (TreeItem<?> root){
+        if(root != null && !root.isLeaf()){
+            root.setExpanded(false);
+            for(TreeItem<?> child:root.getChildren()){
+                collapseAll(child);
+            }
+        }
     }
 
 

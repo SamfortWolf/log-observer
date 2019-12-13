@@ -2,6 +2,10 @@
     -rtfx-background-color: yellow;
 }
 
+.styled-text-area .green {
+    -rtfx-background-color: #5bff5e;
+}
+
 .styled-text-area .white {
     -fx-fill: white;
 }
