@@ -13,7 +13,6 @@ import org.fxmisc.richtext.StyleClassedTextArea;
 import ru.samfort.logobserver.utils.MatchWord;
 import ru.samfort.logobserver.utils.ObservableSetFiller;
 import ru.samfort.logobserver.utils.TextFileManager;
-import ru.samfort.logobserver.utils.TreeViewHelper;
 
 import java.io.File;
 import java.nio.file.Paths;
@@ -21,11 +20,11 @@ import java.util.Map;
 
 import static ru.samfort.logobserver.utils.TextFileManager.read;
 import static ru.samfort.logobserver.utils.TextFileManager.styleTextArea;
+import static ru.samfort.logobserver.utils.TreeViewHelper.*;
 
 public class MainController {
 
     private static Thread searchThread;
-    private static Thread textAreaThread;
 
     private int tabCounter = 0;
     @FXML
@@ -41,24 +40,13 @@ public class MainController {
 
     private StyleClassedTextArea textArea;
 
-    private VirtualizedScrollPane scrollPane;
+    private VirtualizedScrollPane<StyleClassedTextArea> scrollPane;
     @FXML
     private TreeView<String> treeView;
-    @FXML
-    private Button previousButton;
-    @FXML
-    private Button nextButton;
     @FXML
     private Label matchesLabel;
     @FXML
     private Label status;
-    @FXML
-    private Button stopSearch;
-    @FXML
-    private Button expandAll;
-    @FXML
-    private Button collapseAll;
-
 
     private EventHandler<MouseEvent> mouseEventHandle = this::handleMouseClicked;
 
@@ -71,20 +59,21 @@ public class MainController {
         if (event.getClickCount() == 2) {
             matchesLabel.setText("");
             String clickCheck = treeView.getSelectionModel().getSelectedItem().getValue();
-            if (clickCheck!=null && clickCheck.endsWith(ext.getText())) {
-                String str=TreeViewHelper.pathBuilder(treeView.getSelectionModel().getSelectedItem());
+            if (clickCheck != null && clickCheck.endsWith(ext.getText())) {
+                String str = pathBuilder(treeView.getSelectionModel().getSelectedItem());
                 System.out.println("Open: " + str);
                 TextFileManager textFileManager = new TextFileManager();
                 textFileManager.isFileContainText(textToSearch.getText(), Paths.get(str), false);
                 System.out.println("Found " + textFileManager.getWordsPositions().size() + " matches");
                 //prepare new thread
-                textAreaThread = new Thread(() -> {
+                //get new styled text area from file
+                Thread textAreaThread = new Thread(() -> {
                     long startTime = System.currentTimeMillis();
                     //get new styled text area from file
                     textArea = styleTextArea(read(new File(str)), textFileManager.getWordsPositions().entrySet());
                     System.out.println("startTime: " + (System.currentTimeMillis() - startTime) + "ms\n----------------------------");
                     Platform.runLater(() -> {
-                        scrollPane = new VirtualizedScrollPane(textArea);
+                        scrollPane = new VirtualizedScrollPane<>(textArea);
                         addNewTab(textArea, textFileManager.getWordsPositions(), textFileManager.getLinesCount());
                         tabPane.getTabs().get(tabCounter - 1).setContent(scrollPane);
                         textArea.setEditable(false);
@@ -113,22 +102,21 @@ public class MainController {
             //prepare thread to search files
             searchThread = new Thread(() -> {
                 filler.fillObservableSet(directory, ext.getText(), textToSearch.getText(), checkBoxSubs.isSelected());
-                    TreeViewHelper.setRoot(Paths.get(directory.getAbsolutePath()));
-                    TreeViewHelper.setObservableList(filler.getObservableSet());
-                    TreeViewHelper.fillTreeView();
-                    Platform.runLater(() -> {
-                        if (filler.getObservableSet().size()>0) {
-                            status.setText("Complete!");
-                            status.setStyle("-fx-background-color: rgb(81,255,98)");
-                            treeView.setRoot(TreeViewHelper.getRoot());
-                            treeView.addEventHandler(MouseEvent.MOUSE_CLICKED, mouseEventHandle);
-                        }
-                        else {
-                            status.setText("No matches!");
-                            status.setStyle("-fx-background-color: rgb(255,67,75)");
-                            directoryChooserButton.setDisable(false);
-                            }
-                    });
+                setRoot(Paths.get(directory.getAbsolutePath()));
+                setObservableList(filler.getObservableSet());
+                fillTreeView();
+                Platform.runLater(() -> {
+                    if (filler.getObservableSet().size() > 0) {
+                        status.setText("Complete!");
+                        status.setStyle("-fx-background-color: rgb(81,255,98)");
+                        treeView.setRoot(getRoot());
+                        treeView.addEventHandler(MouseEvent.MOUSE_CLICKED, mouseEventHandle);
+                    } else {
+                        status.setText("No matches!");
+                        status.setStyle("-fx-background-color: rgb(255,67,75)");
+                        directoryChooserButton.setDisable(false);
+                    }
+                });
             });
             searchThread.start();
             directoryChooserButton.setDisable(true);
@@ -149,53 +137,57 @@ public class MainController {
 
     @FXML
     private void nextButtonOnClick() {
-        MyTab currentTab = (MyTab) tabPane.getSelectionModel().getSelectedItem();
-        Map<Integer, MatchWord> matchWords = currentTab.getWordsPositions();
-        int allMatches = currentTab.getWordsPositions().size();
-        Integer currentMatch = currentTab.getMatchCounter() + 1;
-        if (currentMatch > matchWords.size()) {
-            currentMatch = 1;
-        }
-        //change label text to show chosen match
-        matchesLabel.setText(currentMatch + "/" + allMatches);
+        if (tabPane.getTabs().size() > 0) {
+            MyTab currentTab = (MyTab) tabPane.getSelectionModel().getSelectedItem();
+            Map<Integer, MatchWord> matchWords = currentTab.getWordsPositions();
+            int allMatches = currentTab.getWordsPositions().size();
+            Integer currentMatch = currentTab.getMatchCounter() + 1;
+            if (currentMatch > matchWords.size()) {
+                currentMatch = 1;
+            }
+            //change label text to show chosen match
+            matchesLabel.setText(currentMatch + "/" + allMatches);
 
-        currentTab.getTextArea().displaceCaret(matchWords.get(currentMatch).getFrom());//set a caret to match word pos
-        int lineNumber = currentTab.getTextArea().getCurrentParagraph();//get number of line with match word
-        currentTab.getTextArea().selectRange(matchWords.get(currentMatch).getFrom(), matchWords.get(currentMatch).getTo());//set a selection
-        int linesCount = currentTab.getLinesCounter();
-        double scrollPaneHeight = scrollPane.getTotalHeightEstimate();//full height of scrollPane (pixels)
-        double oneLineHeight = scrollPaneHeight / linesCount;//height of one line
-        if (oneLineHeight * linesCount > 150) {
-            scrollPane.scrollYToPixel(oneLineHeight * lineNumber - 100);//scroll to line with match word
-        } else {
-            scrollPane.scrollYToPixel(oneLineHeight * lineNumber);//scroll to line with match word
+            currentTab.getTextArea().displaceCaret(matchWords.get(currentMatch).getFrom());//set a caret to match word pos
+            int lineNumber = currentTab.getTextArea().getCurrentParagraph();//get number of line with match word
+            currentTab.getTextArea().selectRange(matchWords.get(currentMatch).getFrom(), matchWords.get(currentMatch).getTo());//set a selection
+            int linesCount = currentTab.getLinesCounter();
+            double scrollPaneHeight = scrollPane.getTotalHeightEstimate();//full height of scrollPane (pixels)
+            double oneLineHeight = scrollPaneHeight / linesCount;//height of one line
+            if (oneLineHeight * linesCount > 150) {
+                scrollPane.scrollYToPixel(oneLineHeight * lineNumber - 100);//scroll to line with match word
+            } else {
+                scrollPane.scrollYToPixel(oneLineHeight * lineNumber);//scroll to line with match word
+            }
+            currentTab.setMatchCounter(currentMatch);
         }
-        currentTab.setMatchCounter(currentMatch);
     }
 
     @FXML
     private void previousButtonOnClick() {
-        MyTab currentTab = (MyTab) tabPane.getSelectionModel().getSelectedItem();
-        Map<Integer, MatchWord> matchWords = currentTab.getWordsPositions();
-        int allMatches = currentTab.getWordsPositions().size();
-        int currentMatch = currentTab.getMatchCounter() - 1;
-        if (currentMatch < 1) {
-            currentMatch = matchWords.size();
-        }
-        matchesLabel.setText(currentMatch + "/" + allMatches);
+        if (tabPane.getTabs().size() > 0) {
+            MyTab currentTab = (MyTab) tabPane.getSelectionModel().getSelectedItem();
+            Map<Integer, MatchWord> matchWords = currentTab.getWordsPositions();
+            int allMatches = currentTab.getWordsPositions().size();
+            int currentMatch = currentTab.getMatchCounter() - 1;
+            if (currentMatch < 1) {
+                currentMatch = matchWords.size();
+            }
+            matchesLabel.setText(currentMatch + "/" + allMatches);
 
-        currentTab.getTextArea().displaceCaret(matchWords.get(currentMatch).getFrom());//set a caret to match word pos
-        int lineNumber = currentTab.getTextArea().getCurrentParagraph();//get number of line with match word
-        currentTab.getTextArea().selectRange(matchWords.get(currentMatch).getFrom(), matchWords.get(currentMatch).getTo());//set a selection
-        int linesCount = currentTab.getLinesCounter();
-        double scrollPaneHeight = scrollPane.getTotalHeightEstimate();//full height of scrollPane (pixels)
-        double oneLineHeight = scrollPaneHeight / linesCount;//height of one line
-        if (oneLineHeight * linesCount > 150) {
-            scrollPane.scrollYToPixel(oneLineHeight * lineNumber - 100);//scroll to line with match word
-        } else {
-            scrollPane.scrollYToPixel(oneLineHeight * lineNumber);//scroll to line with match word
+            currentTab.getTextArea().displaceCaret(matchWords.get(currentMatch).getFrom());//set a caret to match word pos
+            int lineNumber = currentTab.getTextArea().getCurrentParagraph();//get number of line with match word
+            currentTab.getTextArea().selectRange(matchWords.get(currentMatch).getFrom(), matchWords.get(currentMatch).getTo());//set a selection
+            int linesCount = currentTab.getLinesCounter();
+            double scrollPaneHeight = scrollPane.getTotalHeightEstimate();//full height of scrollPane (pixels)
+            double oneLineHeight = scrollPaneHeight / linesCount;//height of one line
+            if (oneLineHeight * linesCount > 150) {
+                scrollPane.scrollYToPixel(oneLineHeight * lineNumber - 100);//scroll to line with match word
+            } else {
+                scrollPane.scrollYToPixel(oneLineHeight * lineNumber);//scroll to line with match word
+            }
+            currentTab.setMatchCounter(currentMatch);
         }
-        currentTab.setMatchCounter(currentMatch);
     }
 
     @FXML
@@ -220,14 +212,14 @@ public class MainController {
     @FXML
     private void expandAllClick() {
         if (treeView.getRoot() != null) {
-            TreeViewHelper.expandAll(treeView.getRoot());
+            expandAll(treeView.getRoot());
         }
     }
 
     @FXML
     private void collapseAllClick() {
         if (treeView.getRoot() != null) {
-            TreeViewHelper.collapseAll(treeView.getRoot());
+            collapseAll(treeView.getRoot());
         }
     }
 }
