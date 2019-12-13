@@ -85,7 +85,7 @@ public class MainController {
                     System.out.println("startTime: " + (System.currentTimeMillis() - startTime) + "ms\n----------------------------");
                     Platform.runLater(() -> {
                         scrollPane = new VirtualizedScrollPane(textArea);
-                        addNewTab(textArea, textFileManager.getWordsPositions());
+                        addNewTab(textArea, textFileManager.getWordsPositions(), textFileManager.getLinesCount());
                         tabPane.getTabs().get(tabCounter - 1).setContent(scrollPane);
                         textArea.setEditable(false);
                         tabPane.getTabs().get(tabCounter - 1).setText(Paths.get(str).getFileName().toString());
@@ -113,16 +113,22 @@ public class MainController {
             //prepare thread to search files
             searchThread = new Thread(() -> {
                 filler.fillObservableSet(directory, ext.getText(), textToSearch.getText(), checkBoxSubs.isSelected());
-                TreeViewHelper.setRoot(Paths.get(directory.getAbsolutePath()));
-                TreeViewHelper.setObservableList(filler.getObservableSet());
-                TreeViewHelper.fillTreeView();
-                Platform.runLater(() -> {
-                    status.setText("Complete!");
-                    status.setStyle("-fx-background-color: rgb(81,255,98)");
-                    treeView.setRoot(TreeViewHelper.getRoot());
-                    treeView.addEventHandler(MouseEvent.MOUSE_CLICKED, mouseEventHandle);
-                });
-
+                    TreeViewHelper.setRoot(Paths.get(directory.getAbsolutePath()));
+                    TreeViewHelper.setObservableList(filler.getObservableSet());
+                    TreeViewHelper.fillTreeView();
+                    Platform.runLater(() -> {
+                        if (filler.getObservableSet().size()>0) {
+                            status.setText("Complete!");
+                            status.setStyle("-fx-background-color: rgb(81,255,98)");
+                            treeView.setRoot(TreeViewHelper.getRoot());
+                            treeView.addEventHandler(MouseEvent.MOUSE_CLICKED, mouseEventHandle);
+                        }
+                        else {
+                            status.setText("No matches!");
+                            status.setStyle("-fx-background-color: rgb(255,67,75)");
+                            directoryChooserButton.setDisable(false);
+                            }
+                    });
             });
             searchThread.start();
             directoryChooserButton.setDisable(true);
@@ -130,8 +136,8 @@ public class MainController {
     }
 
     @FXML
-    private void addNewTab(StyleClassedTextArea textArea, Map<Integer, MatchWord> wordPositions) {
-        MyTab newTab = new MyTab(textArea, wordPositions);
+    private void addNewTab(StyleClassedTextArea textArea, Map<Integer, MatchWord> wordPositions, int linesCount) {
+        MyTab newTab = new MyTab(textArea, wordPositions, linesCount);
         newTab.setOnClosed((Event event) -> tabCounter--);
         newTab.setOnSelectionChanged(tabSelectionHandler);
         tabCounter++;
@@ -156,7 +162,7 @@ public class MainController {
         currentTab.getTextArea().displaceCaret(matchWords.get(currentMatch).getFrom());//set a caret to match word pos
         int lineNumber = currentTab.getTextArea().getCurrentParagraph();//get number of line with match word
         currentTab.getTextArea().selectRange(matchWords.get(currentMatch).getFrom(), matchWords.get(currentMatch).getTo());//set a selection
-        int linesCount = currentTab.getTextArea().getParagraphs().size();
+        int linesCount = currentTab.getLinesCounter();
         double scrollPaneHeight = scrollPane.getTotalHeightEstimate();//full height of scrollPane (pixels)
         double oneLineHeight = scrollPaneHeight / linesCount;//height of one line
         if (oneLineHeight * linesCount > 150) {
@@ -181,7 +187,7 @@ public class MainController {
         currentTab.getTextArea().displaceCaret(matchWords.get(currentMatch).getFrom());//set a caret to match word pos
         int lineNumber = currentTab.getTextArea().getCurrentParagraph();//get number of line with match word
         currentTab.getTextArea().selectRange(matchWords.get(currentMatch).getFrom(), matchWords.get(currentMatch).getTo());//set a selection
-        int linesCount = currentTab.getTextArea().getParagraphs().size();
+        int linesCount = currentTab.getLinesCounter();
         double scrollPaneHeight = scrollPane.getTotalHeightEstimate();//full height of scrollPane (pixels)
         double oneLineHeight = scrollPaneHeight / linesCount;//height of one line
         if (oneLineHeight * linesCount > 150) {

@@ -9,13 +9,20 @@ import java.util.Map;
 
 public class MyTab extends Tab {
 
+    private Integer linesCounter;
     private Integer matchCounter = 0;
     private StyleClassedTextArea textArea;
+
+    public Integer getLinesCounter() {
+        return linesCounter;
+    }
+
     private Map<Integer, MatchWord> wordsPositions;
 
-    public MyTab(StyleClassedTextArea textArea, Map<Integer, MatchWord> wordsPositions) {
+    public MyTab(StyleClassedTextArea textArea, Map<Integer, MatchWord> wordsPositions, int linesCount) {
         this.textArea = textArea;
         this.wordsPositions = wordsPositions;
+        this.linesCounter=linesCount;
     }
 
     public MyTab(String text, StyleClassedTextArea textArea, Map<Integer, MatchWord> wordsPositions) {

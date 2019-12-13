@@ -19,13 +19,18 @@ public class TextFileManager {
     private static final int MAPSIZE = 4 * 1024 * 1024;
     //key is start position and value is end position of matched word
     private HashMap<Integer, MatchWord> wordsPositions = new HashMap<>();
+    private int linesCount=0;
+
+    public int getLinesCount() {
+        return linesCount;
+    }
 
     //reading text from file to StyleClassedTextArea
     public static StyleClassedTextArea read(File fileFrom) {
         StyleClassedTextArea textAreaTo = new StyleClassedTextArea();
         try (BufferedReader reader = new BufferedReader(new FileReader(fileFrom))) {
             char[] buf = new char[102400];//100Kb buf
-            int byteCounter = 0;
+            int byteCounter;
             while (reader.ready()) {
                 byteCounter = reader.read(buf);
                 textAreaTo.appendText(new String(buf, 0, byteCounter));
@@ -66,9 +71,13 @@ public class TextFileManager {
                 pos += (tryMap == toMap) ? MAPSIZE : toMap;
                 for (int i = 0; i < limit; i++) {
                     final byte b = buffer.get(i);
-                    if (b == '\n' || b == ' ') {
+                    if (b == '\n') {
                         inWord = false;
-                    } else if (b == '\r') {
+                        linesCount++;
+                    } else if (b == ' ') {
+                        inWord = false;
+                    }
+                    else if (b == '\r') {
                         carriageReturnCount++;
                         inWord = false;
                     } else if (!inWord) {
@@ -90,7 +99,7 @@ public class TextFileManager {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return matches > 0 ? true : false;
+        return matches > 0;
     }
 
     private static boolean wordMatch(MappedByteBuffer buffer, int pos, int toMap, byte[] toSearch) {
