@@ -4,7 +4,6 @@ import javafx.application.Platform;
 import javafx.event.Event;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
-import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
 import javafx.stage.DirectoryChooser;
@@ -18,13 +17,13 @@ import ru.samfort.logobserver.utils.TreeViewHelper;
 
 import java.io.File;
 import java.nio.file.Paths;
-import java.util.Collections;
-import java.util.List;
 import java.util.Map;
+
+import static ru.samfort.logobserver.utils.TextFileManager.read;
+import static ru.samfort.logobserver.utils.TextFileManager.styleTextArea;
 
 public class MainController {
 
-    private static List<String> yellowBackStyle = Collections.singletonList("yellow");
     private static Thread searchThread;
     private static Thread textAreaThread;
 
@@ -67,34 +66,32 @@ public class MainController {
             matchesLabel.setText(((MyTab) tabPane.getSelectionModel().getSelectedItem()).getMatchCounter() + "/" +
                     ((MyTab) tabPane.getSelectionModel().getSelectedItem()).getWordsPositions().size());
 
-
     private void handleMouseClicked(MouseEvent event) {
-        Node node = event.getPickResult().getIntersectedNode();
-        // Accept double clicks only on node cells, and not on empty spaces of the TreeView
-        if (event.getClickCount() == 2 ) {
+        // Accept double clicks
+        if (event.getClickCount() == 2) {
             matchesLabel.setText("");
-            String str = TreeViewHelper.pathBuilder(treeView.getSelectionModel().getSelectedItem());//listView.getSelectionModel().getSelectedItem();
-            if (str.endsWith(ext.getText())) {
+            String clickCheck = treeView.getSelectionModel().getSelectedItem().getValue();
+            if (clickCheck!=null && clickCheck.endsWith(ext.getText())) {
+                String str=TreeViewHelper.pathBuilder(treeView.getSelectionModel().getSelectedItem());
                 System.out.println("Open: " + str);
                 TextFileManager textFileManager = new TextFileManager();
-                textFileManager.isFileContainText(textToSearch.getText(), Paths.get(str), false);//693ms
+                textFileManager.isFileContainText(textToSearch.getText(), Paths.get(str), false);
                 System.out.println("Found " + textFileManager.getWordsPositions().size() + " matches");
-                textArea = new StyleClassedTextArea();
-
-                long time = System.currentTimeMillis();
-                //read text from file to textArea
-                TextFileManager.read(new File(str), textArea);
-                for (Map.Entry<Integer, MatchWord> pair : textFileManager.getWordsPositions().entrySet()) {
-                    //add yellow background to words
-                    textArea.setStyle(pair.getValue().getFrom(), pair.getValue().getTo(), yellowBackStyle);
-                }
-                System.out.println("time: " + (System.currentTimeMillis() - time) + "ms\n----------------------------");
-
-                scrollPane = new VirtualizedScrollPane(textArea);
-                addNewTab(textArea, textFileManager.getWordsPositions());
-                tabPane.getTabs().get(tabCounter - 1).setContent(scrollPane);
-                textArea.setEditable(false);
-                tabPane.getTabs().get(tabCounter - 1).setText(Paths.get(str).getFileName().toString());
+                //prepare new thread
+                textAreaThread = new Thread(() -> {
+                    long startTime = System.currentTimeMillis();
+                    //get new styled text area from file
+                    textArea = styleTextArea(read(new File(str)), textFileManager.getWordsPositions().entrySet());
+                    System.out.println("startTime: " + (System.currentTimeMillis() - startTime) + "ms\n----------------------------");
+                    Platform.runLater(() -> {
+                        scrollPane = new VirtualizedScrollPane(textArea);
+                        addNewTab(textArea, textFileManager.getWordsPositions());
+                        tabPane.getTabs().get(tabCounter - 1).setContent(scrollPane);
+                        textArea.setEditable(false);
+                        tabPane.getTabs().get(tabCounter - 1).setText(Paths.get(str).getFileName().toString());
+                    });
+                });
+                textAreaThread.start();
             }
         }
     }
@@ -103,6 +100,7 @@ public class MainController {
     private void directoryChooser() {
         final DirectoryChooser directoryChooser = new DirectoryChooser();
         Window dcWindow = directoryChooserButton.getScene().getWindow();
+        //show directory chooser window
         File directory = directoryChooser.showDialog(dcWindow);
         if (treeView.getRoot() != null) {
             treeView.setRoot(null);
@@ -112,12 +110,13 @@ public class MainController {
             status.setText("Processing...");
             status.setStyle("-fx-background-color: rgb(255,176,50)");
             ObservableSetFiller filler = new ObservableSetFiller();
+            //prepare thread to search files
             searchThread = new Thread(() -> {
                 filler.fillObservableSet(directory, ext.getText(), textToSearch.getText(), checkBoxSubs.isSelected());
                 TreeViewHelper.setRoot(Paths.get(directory.getAbsolutePath()));
                 TreeViewHelper.setObservableList(filler.getObservableSet());
-                TreeViewHelper.fill();
-                Platform.runLater(()->{
+                TreeViewHelper.fillTreeView();
+                Platform.runLater(() -> {
                     status.setText("Complete!");
                     status.setStyle("-fx-background-color: rgb(81,255,98)");
                     treeView.setRoot(TreeViewHelper.getRoot());
@@ -194,16 +193,17 @@ public class MainController {
     }
 
     @FXML
-    private void stopButtonClick () throws InterruptedException {
-        if (searchThread!=null && searchThread.isAlive()){
+    private void stopButtonClick() {
+        if (searchThread != null && searchThread.isAlive()) {
+            //stop thread using deprecating method((
             searchThread.stop();
         }
+        //clear all forms and labels
         status.setText("--");
         status.setStyle(null);
-        if (tabPane.getTabs().size()>0) {
+        if (tabPane.getTabs().size() > 0) {
             tabPane.getTabs().clear();
         }
-        Thread.sleep(250);
         if (treeView.getRoot() != null) {
             treeView.setRoot(null);
         }
@@ -212,14 +212,15 @@ public class MainController {
     }
 
     @FXML
-    private void expandAllClick (){
-        if (treeView.getRoot()!=null) {
+    private void expandAllClick() {
+        if (treeView.getRoot() != null) {
             TreeViewHelper.expandAll(treeView.getRoot());
         }
     }
+
     @FXML
-    private void collapseAllClick (){
-        if (treeView.getRoot()!=null) {
+    private void collapseAllClick() {
+        if (treeView.getRoot() != null) {
             TreeViewHelper.collapseAll(treeView.getRoot());
         }
     }

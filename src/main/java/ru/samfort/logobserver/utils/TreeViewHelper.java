@@ -4,10 +4,9 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.ObservableSet;
 import javafx.scene.control.TreeItem;
-import javafx.scene.control.TreeView;
 
 import java.nio.file.Path;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
 
 
 public class TreeViewHelper {
@@ -21,14 +20,15 @@ public class TreeViewHelper {
     }
 
     public static void setObservableList(ObservableSet<Path> observableSet) {
-        observableList = FXCollections.observableList(observableSet.stream().collect(Collectors.toList()));
+        observableList = FXCollections.observableList(new ArrayList<>(observableSet));
     }
 
     public static TreeItem getRoot() {
         return root;
     }
 
-    public static void fill() {
+    //fill tree from list with paths
+    public static void fillTreeView() {
         for (Path path : observableList) {
             TreeItem<String> current = root;
             path = rootPath.relativize(path);
@@ -49,6 +49,7 @@ public class TreeViewHelper {
         return newChild;
     }
 
+    //recursive build path to file from it's name
     public static String pathBuilder(TreeItem<String> lastElement) {
         StringBuilder result = new StringBuilder(lastElement.getValue());
         TreeItem parent = lastElement.getParent();
@@ -61,19 +62,19 @@ public class TreeViewHelper {
         return result.toString();
     }
 
-    public static void expandAll (TreeItem<?> root){
-        if(root != null && !root.isLeaf()){
+    public static void expandAll(TreeItem<?> root) {
+        if (root != null && !root.isLeaf()) {
             root.setExpanded(true);
-            for(TreeItem<?> child:root.getChildren()){
+            for (TreeItem<?> child : root.getChildren()) {
                 expandAll(child);
             }
         }
     }
 
-    public static void collapseAll (TreeItem<?> root){
-        if(root != null && !root.isLeaf()){
+    public static void collapseAll(TreeItem<?> root) {
+        if (root != null && !root.isLeaf()) {
             root.setExpanded(false);
-            for(TreeItem<?> child:root.getChildren()){
+            for (TreeItem<?> child : root.getChildren()) {
                 collapseAll(child);
             }
         }

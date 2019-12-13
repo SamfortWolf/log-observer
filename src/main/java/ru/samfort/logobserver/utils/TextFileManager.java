@@ -11,32 +11,42 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.HashMap;
+import java.util.*;
 
 //Util class for working with text files
 public class TextFileManager {
+    private static List<String> yellowBackStyle = Collections.singletonList("yellow");
     private static final int MAPSIZE = 4 * 1024 * 1024;
-    //key is start position and value is end position
+    //key is start position and value is end position of matched word
     private HashMap<Integer, MatchWord> wordsPositions = new HashMap<>();
 
-    //reading text string by string from file to StyleClassedTextArea
-    public static boolean read(File fileFrom, StyleClassedTextArea textAreaTo) {
+    //reading text from file to StyleClassedTextArea
+    public static StyleClassedTextArea read(File fileFrom) {
+        StyleClassedTextArea textAreaTo = new StyleClassedTextArea();
         try (BufferedReader reader = new BufferedReader(new FileReader(fileFrom))) {
-            char[] buf = new char[102400];
+            char[] buf = new char[102400];//100Kb buf
+            int byteCounter = 0;
             while (reader.ready()) {
-                reader.read(buf);
-                textAreaTo.appendText(new String(buf));
+                byteCounter = reader.read(buf);
+                textAreaTo.appendText(new String(buf, 0, byteCounter));
             }
-            return true;
+            return textAreaTo;
         } catch (IOException e) {
             e.printStackTrace();
-            return false;
+            return null;
         }
+    }
+
+    public static StyleClassedTextArea styleTextArea(StyleClassedTextArea textArea, Set<Map.Entry<Integer, MatchWord>> wordsPositions) {
+        for (Map.Entry<Integer, MatchWord> pair : wordsPositions) {
+            //add yellow background to words
+            textArea.setStyle(pair.getValue().getFrom(), pair.getValue().getTo(), yellowBackStyle);
+        }
+        return textArea;
     }
 
     public boolean isFileContainText(String grepFor, Path pathToCheck, Boolean firstOnly) {
         final byte[] toSearch = grepFor.getBytes(StandardCharsets.UTF_8);
-        StringBuilder report = new StringBuilder();
         int padding = 1; // need to scan 1 character ahead in case it is a word boundary.
         int carriageReturnCount = 0;//for windows
         int matches = 0;
@@ -63,16 +73,10 @@ public class TextFileManager {
                         inWord = false;
                     } else if (!inWord) {
                         if (wordMatch(buffer, i, toMap, toSearch)) {
-                            //System.out.println("File " + pathToCheck.toString() + " contains \"" + grepFor + "\"");
                             matches++;
                             if (!firstOnly) {
                                 wordsPositions.put(matches, new MatchWord(i - carriageReturnCount + iterations, i + grepFor.length() - carriageReturnCount + iterations));
-                                //System.out.println("Starts at "+i+", end at "+(i + grepFor.length()));
                                 i += toSearch.length - 1;
-                                if (report.length() > 0) {
-                                    report.append(", ");
-                                }
-                                report.append(carriageReturnCount);
                             } else {
                                 return true;
                             }
@@ -81,7 +85,6 @@ public class TextFileManager {
                         }
                     }
                 }
-                //System.out.println("it: "+iterations);
                 iterations += limit + 1;
             }
         } catch (IOException e) {
