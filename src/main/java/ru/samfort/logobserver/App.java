@@ -17,7 +17,7 @@ public class App extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
-        scene = new Scene(loadFXML("observerV2"));
+        scene = new Scene(loadFXML("observerV3"));
         scene.getStylesheets().add(App.class.getResource("highlight.css").toExternalForm());
         stage.setScene(scene);
         stage.setTitle("Log Observer");

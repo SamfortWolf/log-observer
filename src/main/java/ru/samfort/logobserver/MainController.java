@@ -14,13 +14,13 @@ import org.fxmisc.richtext.StyleClassedTextArea;
 import ru.samfort.logobserver.utils.MatchWord;
 import ru.samfort.logobserver.utils.ObservableSetFiller;
 import ru.samfort.logobserver.utils.TextFileManager;
+import ru.samfort.logobserver.utils.TreeViewHelper;
 
 import java.io.File;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class MainController {
 
@@ -42,7 +42,7 @@ public class MainController {
 
     private VirtualizedScrollPane scrollPane;
     @FXML
-    private ListView<String> listView;
+    private TreeView<String> treeView;
     @FXML
     private Button previousButton;
     @FXML
@@ -62,7 +62,7 @@ public class MainController {
         // Accept double clicks only on node cells, and not on empty spaces of the TreeView
         if (event.getClickCount() == 2 && (node instanceof Text || (node instanceof TreeCell && ((TreeCell) node).getText() != null))) {
             matchesLabel.setText("");
-            String str = listView.getSelectionModel().getSelectedItem();
+            String str = TreeViewHelper.pathBuilder(treeView.getSelectionModel().getSelectedItem());//listView.getSelectionModel().getSelectedItem();
             System.out.println("Node double click at: " + str);
             TextFileManager textFileManager = new TextFileManager();
             textFileManager.isFileContainText(textToSearch.getText(), Paths.get(str), false);//693ms
@@ -89,17 +89,21 @@ public class MainController {
         final DirectoryChooser directoryChooser = new DirectoryChooser();
         Window dcWindow = directoryChooserButton.getScene().getWindow();
         File directory = directoryChooser.showDialog(dcWindow);
-        if (listView.getItems().size() > 0) {
-            listView.getItems().clear();
+        if (treeView.getRoot() != null) {
+            treeView.setRoot(null);
         }
-        ObservableSetFiller filler = new ObservableSetFiller();
         if (directory != null) {
+            System.out.println("Root directory is: " + directory.toString());
+            ObservableSetFiller filler = new ObservableSetFiller();
             new Thread(() -> {
                 filler.fillObservableSet(directory, ext.getText(), textToSearch.getText(), checkBoxSubs.isSelected());
-                listView.getItems().addAll(filler.getObservableSet());
-                listView.addEventHandler(MouseEvent.MOUSE_CLICKED, mouseEventHandle);
-                listView.getFocusModel().focus(1);
+                TreeViewHelper.setRoot(Paths.get(directory.getAbsolutePath()));
+                TreeViewHelper.setObservableList(filler.getObservableSet());
+                TreeViewHelper.fill();
+                treeView.setRoot(TreeViewHelper.getRoot());
+                treeView.getRoot().setExpanded(true);
             }).start();
+            treeView.addEventHandler(MouseEvent.MOUSE_CLICKED, mouseEventHandle);
         }
     }
 

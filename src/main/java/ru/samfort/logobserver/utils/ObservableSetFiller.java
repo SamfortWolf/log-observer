@@ -10,7 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class ObservableSetFiller {
-    private ObservableSet<String> observableSet = FXCollections.observableSet();
+    private ObservableSet<Path> observableSet = FXCollections.observableSet();
     private TextFileManager textFileManager = new TextFileManager();
 
     public void fillObservableSet(File root, String filter, String textToSearch, boolean withSubs) {
@@ -21,7 +21,7 @@ public class ObservableSetFiller {
                 for (Path children : directoryStream) {
                     if (Files.isRegularFile(children) && children.getFileName().toString().endsWith(filter) &&
                             textFileManager.isFileContainText(textToSearch, children, true)) {
-                        observableSet.add(children.toString());
+                        observableSet.add(children);
                     } else if (Files.isDirectory(children) && withSubs) {
                         this.fillObservableSet(children.toFile(), filter, textToSearch, withSubs);
                     }
@@ -32,7 +32,7 @@ public class ObservableSetFiller {
         }
     }
 
-    public ObservableSet<String> getObservableSet() {
+    public ObservableSet<Path> getObservableSet() {
         return observableSet;
     }
 }
