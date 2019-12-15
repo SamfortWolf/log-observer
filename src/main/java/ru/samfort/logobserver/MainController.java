@@ -26,7 +26,7 @@ public class MainController {
 
     private static Thread searchThread;
 
-    private static File lastSearchDirectory =null;
+    private static File lastSearchDirectory = null;
 
     private int tabCounter = 0;
     @FXML
@@ -69,6 +69,7 @@ public class MainController {
                 System.out.println("Found " + textFileManager.getWordsPositions().size() + " matches");
                 //prepare new thread
                 //get new styled text area from file
+                //TODO: need to fix NullPointerException (does not affect the application)
                 Thread textAreaThread = new Thread(() -> {
                     long startTime = System.currentTimeMillis();
                     //get new styled text area from file
@@ -93,7 +94,7 @@ public class MainController {
     @FXML
     private void directoryChooser() {
         final DirectoryChooser directoryChooser = new DirectoryChooser();
-        if (lastSearchDirectory !=null){
+        if (lastSearchDirectory != null) {
             directoryChooser.setInitialDirectory(lastSearchDirectory);//set last search directory if it exists
         }
         Window dcWindow = directoryChooserButton.getScene().getWindow();
@@ -165,6 +166,7 @@ public class MainController {
             int linesCount = currentTab.getLinesCounter();
             double scrollPaneHeight = scrollPane.getTotalHeightEstimate();//full height of scrollPane (pixels)
             double oneLineHeight = scrollPaneHeight / linesCount;//height of one line
+            //TODO: add horizontal scrolling to match word
             if (oneLineHeight * linesCount > 150) {
                 scrollPane.scrollYToPixel(oneLineHeight * lineNumber - 100);//scroll to line with match word
             } else {
@@ -192,6 +194,7 @@ public class MainController {
             int linesCount = currentTab.getLinesCounter();
             double scrollPaneHeight = scrollPane.getTotalHeightEstimate();//full height of scrollPane (pixels)
             double oneLineHeight = scrollPaneHeight / linesCount;//height of one line
+            //TODO: add horizontal scrolling to match word
             if (oneLineHeight * linesCount > 150) {
                 scrollPane.scrollYToPixel(oneLineHeight * lineNumber - 100);//scroll to line with match word
             } else {
