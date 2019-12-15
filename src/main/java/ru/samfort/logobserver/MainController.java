@@ -26,6 +26,8 @@ public class MainController {
 
     private static Thread searchThread;
 
+    private static File lastSearchDirectory =null;
+
     private int tabCounter = 0;
     @FXML
     private TextField textToSearch;
@@ -71,13 +73,16 @@ public class MainController {
                     long startTime = System.currentTimeMillis();
                     //get new styled text area from file
                     textArea = styleTextArea(read(new File(str)), textFileManager.getWordsPositions().entrySet());
-                    System.out.println("startTime: " + (System.currentTimeMillis() - startTime) + "ms\n----------------------------");
+                    System.out.println("Search time is: " + (System.currentTimeMillis() - startTime) + "ms\n----------------------------");
                     Platform.runLater(() -> {
                         scrollPane = new VirtualizedScrollPane<>(textArea);
                         addNewTab(textArea, textFileManager.getWordsPositions(), textFileManager.getLinesCount());
                         tabPane.getTabs().get(tabCounter - 1).setContent(scrollPane);
                         textArea.setEditable(false);
+                        textArea.setDisable(true);
                         tabPane.getTabs().get(tabCounter - 1).setText(Paths.get(str).getFileName().toString());
+                        tabPane.getSelectionModel().select(tabPane.getTabs().get(tabCounter - 1));
+
                     });
                 });
                 textAreaThread.start();
@@ -88,6 +93,9 @@ public class MainController {
     @FXML
     private void directoryChooser() {
         final DirectoryChooser directoryChooser = new DirectoryChooser();
+        if (lastSearchDirectory !=null){
+            directoryChooser.setInitialDirectory(lastSearchDirectory);//set last search directory if it exists
+        }
         Window dcWindow = directoryChooserButton.getScene().getWindow();
         //show directory chooser window
         File directory = directoryChooser.showDialog(dcWindow);
@@ -95,9 +103,11 @@ public class MainController {
             treeView.setRoot(null);
         }
         if (directory != null) {
+            lastSearchDirectory = directory;//save last search directory
             System.out.println("Root directory is: " + directory.toString());
             status.setText("Processing...");
             status.setStyle("-fx-background-color: rgb(255,176,50)");
+            long startTime = System.currentTimeMillis();
             ObservableSetFiller filler = new ObservableSetFiller();
             //prepare thread to search files
             searchThread = new Thread(() -> {
@@ -111,10 +121,12 @@ public class MainController {
                         status.setStyle("-fx-background-color: rgb(81,255,98)");
                         treeView.setRoot(getRoot());
                         treeView.addEventHandler(MouseEvent.MOUSE_CLICKED, mouseEventHandle);
+                        System.out.println("Search time is: " + (System.currentTimeMillis() - startTime) + "ms\n----------------------------");
                     } else {
                         status.setText("No matches!");
                         status.setStyle("-fx-background-color: rgb(255,67,75)");
                         directoryChooserButton.setDisable(false);
+                        System.out.println("Time: " + (System.currentTimeMillis() - startTime) + "ms\n----------------------------");
                     }
                 });
             });
@@ -147,7 +159,6 @@ public class MainController {
             }
             //change label text to show chosen match
             matchesLabel.setText(currentMatch + "/" + allMatches);
-
             currentTab.getTextArea().displaceCaret(matchWords.get(currentMatch).getFrom());//set a caret to match word pos
             int lineNumber = currentTab.getTextArea().getCurrentParagraph();//get number of line with match word
             currentTab.getTextArea().selectRange(matchWords.get(currentMatch).getFrom(), matchWords.get(currentMatch).getTo());//set a selection
