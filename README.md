@@ -14,3 +14,6 @@ JavaFX application for searching a given text in log files.
 файлы и осуществлять по ним быструю навигацию, возможность открывать файлы в новых «табах», т. е. использовать TabFolder или MDI.
 Для отображения разрешается использовать любые Java GUI-фреймворки (AWT, Swing, SWT, JavaFX, NetBeans Platform и т.п.).
 Приложение может быть как десктопным, так и веб-клиентом.
+
+# Используемые технологии:
+JavaFX, RichTextFX, SceneBuilder
